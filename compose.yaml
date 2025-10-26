@@ -1,0 +1,55 @@
+services:
+
+    nginx:
+        image: ${COMPOSE_PROJECT_NAME}-nginx:latest
+        build:
+            context: .
+            args:
+                BUILD_ENV: dev
+            dockerfile: ./docker/nginx/Dockerfile
+        container_name: ${COMPOSE_PROJECT_NAME}-nginx
+        restart: always
+        ports:
+            - "${WEB_PORT_HTTP}:80"
+            - "${WEB_PORT_SSL}:443"
+        volumes:
+            - ./:/var/www/html:ro,cached
+        networks:
+            - symfony
+
+    symfony:
+        image: ${COMPOSE_PROJECT_NAME}-symfony:latest
+        build:
+            context: .
+            args:
+                BUILD_ENV: dev
+                HOST_UID: ${HOST_UID}
+                HOST_GID: ${HOST_GID}
+                XDEBUG_VERSION: ${XDEBUG_VERSION}
+            dockerfile: ./docker/php/Dockerfile
+        container_name: ${COMPOSE_PROJECT_NAME}-symfony
+        extra_hosts:
+            - host.docker.internal:host-gateway
+        environment:
+          PHP_IDE_CONFIG: serverName=localhost
+        volumes:
+            - ./:/var/www/html:cached
+        networks:
+            - symfony
+
+    mysql:
+        image: mysql:${MYSQL_VERSION}
+        container_name: ${COMPOSE_PROJECT_NAME}-mysql
+        environment:
+            MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+            MYSQL_DATABASE: symfony
+        ports:
+            - "${MYSQL_PORT}:3306"
+        volumes:
+            - ./var/mysql-data:/var/lib/mysql:delegated
+        networks:
+            - symfony
+
+networks:
+    symfony:
+        name: symfony
